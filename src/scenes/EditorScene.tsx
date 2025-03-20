@@ -7,6 +7,7 @@ import { Vector3, Raycaster, Plane, Vector2 } from 'three';
 import { BlockPalette } from '../components/ui/BlockPalette';
 import { SettingsPanel } from '../components/ui/SettingsPanel';
 import { ToolBar, ToolType } from '../components/ui/ToolBar';
+import { HelpGuide } from '../components/ui/HelpGuide';
 import { BlockType } from '../types';
 
 // スナップ用のユーティリティ関数
@@ -223,6 +224,9 @@ export const EditorScene = () => {
       {/* ツールバー */}
       <ToolBar onToolChange={handleToolChange} />
       
+      {/* ヘルプガイド */}
+      <HelpGuide />
+      
       <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
@@ -270,19 +274,6 @@ export const EditorScene = () => {
         
         {/* 環境光 */}
         <Environment preset={activeProject?.settings.lightingMode === 'day' ? 'sunset' : 'night'} />
-      
-        {/* 操作ガイド */}
-        <Html position={[-15, 10, 0]}>
-          <div className="usage-guide">
-            <h3>Block World 操作方法</h3>
-            <p>👆 パレットからブロックをドラッグして配置</p>
-            <p>🛠️ ツールバーから適切なツールを選択</p>
-            <p>🔍 ブロックを選択してドラッグで移動</p>
-            <p>🔄 選択したブロックを右クリック+ドラッグして回転</p>
-            <p>❌ ブロックをダブルクリックで削除</p>
-            <p>⚙️ 設定パネルでグリッド表示と吸着を調整</p>
-          </div>
-        </Html>
       </Canvas>
     </div>
   );
