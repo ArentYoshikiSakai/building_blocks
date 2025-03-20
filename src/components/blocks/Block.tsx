@@ -2,7 +2,9 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Block as BlockType } from '../../types';
 import { useBlockStore } from '../../store/useBlockStore';
-import { Vector3, Mesh, Raycaster, Plane } from 'three';
+import { Vector3, Mesh, Raycaster, Plane, Euler, MathUtils } from 'three';
+import { createPortal } from 'react-dom';
+import { ContextMenu } from '../ui/ContextMenu';
 
 interface BlockProps {
   block: BlockType;
@@ -16,12 +18,17 @@ export const Block = ({ block, onMove }: BlockProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const { camera, gl } = useThree();
   
+  // コンテキストメニュー用の状態
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  
   const {
     selectedBlockId,
     selectBlock,
     updateBlockPosition,
     updateBlockRotation,
-    removeBlock
+    removeBlock,
+    setDraggingBlock
   } = useBlockStore();
   
   const isSelected = selectedBlockId === block.id;
@@ -110,6 +117,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
     
     // ドラッグ開始
     setIsDragging(true);
+    setDraggingBlock(true); // グローバルなドラッグ状態を更新
     gl.domElement.style.cursor = 'grabbing';
     
     // 元の位置を保存
@@ -125,6 +133,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
     // ドラッグ終了
     if (isDragging) {
       setIsDragging(false);
+      setDraggingBlock(false); // グローバルなドラッグ状態を更新
       gl.domElement.style.cursor = 'auto';
     }
   };
@@ -148,6 +157,51 @@ export const Block = ({ block, onMove }: BlockProps) => {
     removeBlock(block.id);
   };
   
+  // 右クリックハンドラ - コンテキストメニューを表示
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // 先にブロックを選択
+    if (!isSelected) {
+      selectBlock(block.id);
+    }
+    
+    // コンテキストメニューの位置を設定
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
+  };
+  
+  // コンテキストメニューを閉じる
+  const handleCloseContextMenu = () => {
+    setShowContextMenu(false);
+  };
+  
+  // 回転処理
+  const handleRotate = (axis: 'x' | 'y' | 'z', direction: 1 | -1) => {
+    // 現在の回転を取得
+    const currentRotation = new Euler(
+      block.rotation.x,
+      block.rotation.y,
+      block.rotation.z
+    );
+    
+    // 90度（π/2ラジアン）回転
+    const rotationAmount = Math.PI / 2 * direction;
+    
+    // 指定した軸に対して回転
+    if (axis === 'x') {
+      currentRotation.x = MathUtils.euclideanModulo(currentRotation.x + rotationAmount, Math.PI * 2);
+    } else if (axis === 'y') {
+      currentRotation.y = MathUtils.euclideanModulo(currentRotation.y + rotationAmount, Math.PI * 2);
+    } else if (axis === 'z') {
+      currentRotation.z = MathUtils.euclideanModulo(currentRotation.z + rotationAmount, Math.PI * 2);
+    }
+    
+    // 回転を更新
+    updateBlockRotation(block.id, currentRotation);
+  };
+  
   // ドキュメント全体のポインターイベントを処理
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
@@ -159,6 +213,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
     const handlePointerUp = () => {
       if (isDragging) {
         setIsDragging(false);
+        setDraggingBlock(false); // グローバルなドラッグ状態を更新
         gl.domElement.style.cursor = 'auto';
       }
     };
@@ -173,27 +228,40 @@ export const Block = ({ block, onMove }: BlockProps) => {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, gl]);
+  }, [isDragging, gl, setDraggingBlock]);
   
   return (
-    <mesh
-      ref={meshRef}
-      position={[block.position.x, block.position.y, block.position.z]}
-      rotation={[block.rotation.x, block.rotation.y, block.rotation.z]}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerOver={() => setHovered(true)}
-      onPointerOut={() => setHovered(false)}
-    >
-      {renderBlockMesh()}
-      <meshStandardMaterial 
-        color={isDragging ? '#ff0000' : hovered ? '#ff9e00' : isSelected ? '#1e88e5' : block.color} 
-        wireframe={false}
-        transparent={block.type === 'window'}
-        opacity={block.type === 'window' ? 0.5 : 1}
-      />
-    </mesh>
+    <>
+      <mesh
+        ref={meshRef}
+        position={[block.position.x, block.position.y, block.position.z]}
+        rotation={[block.rotation.x, block.rotation.y, block.rotation.z]}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onDoubleClick={handleDoubleClick}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerOver={() => setHovered(true)}
+        onPointerOut={() => setHovered(false)}
+      >
+        {renderBlockMesh()}
+        <meshStandardMaterial 
+          color={isDragging ? '#ff0000' : hovered ? '#ff9e00' : isSelected ? '#1e88e5' : block.color} 
+          wireframe={false}
+          transparent={block.type === 'window'}
+          opacity={block.type === 'window' ? 0.5 : 1}
+        />
+      </mesh>
+      
+      {/* コンテキストメニュー */}
+      {showContextMenu && createPortal(
+        <ContextMenu 
+          position={contextMenuPosition}
+          onClose={handleCloseContextMenu}
+          onRotate={handleRotate}
+        />,
+        document.body
+      )}
+    </>
   );
 }; 

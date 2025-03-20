@@ -6,6 +6,7 @@ import { Block, BlockType, Project, ProjectSettings } from '../types';
 interface BlockState {
   activeProject: Project | null;
   selectedBlockId: string | null;
+  isDraggingBlock: boolean; // ドラッグ状態を追跡
   
   // プロジェクト操作
   createNewProject: (name: string) => void;
@@ -18,6 +19,9 @@ interface BlockState {
   updateBlockRotation: (id: string, rotation: Euler) => void;
   updateBlockColor: (id: string, color: string) => void;
   selectBlock: (id: string | null) => void;
+  
+  // ドラッグ状態操作
+  setDraggingBlock: (isDragging: boolean) => void;
   
   // 設定操作
   updateProjectSettings: (settings: Partial<ProjectSettings>) => void;
@@ -36,6 +40,7 @@ const defaultProjectSettings: ProjectSettings = {
 export const useBlockStore = create<BlockState>((set) => ({
   activeProject: null,
   selectedBlockId: null,
+  isDraggingBlock: false, // 初期値はfalse
   
   createNewProject: (name) => {
     const newProject: Project = {
@@ -154,6 +159,11 @@ export const useBlockStore = create<BlockState>((set) => ({
   
   selectBlock: (id) => {
     set({ selectedBlockId: id });
+  },
+  
+  // ドラッグ状態を設定するアクション
+  setDraggingBlock: (isDragging) => {
+    set({ isDraggingBlock: isDragging });
   },
   
   updateProjectSettings: (settings) => {

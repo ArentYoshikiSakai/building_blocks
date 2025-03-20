@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
-import { OrbitControls, Grid, Environment } from '@react-three/drei';
-import { Block } from '../components/blocks/Block';
+import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
+import { Block as BlockComponent } from '../components/blocks/Block';
 import { useBlockStore } from '../store/useBlockStore';
 import { Vector3, Raycaster, Plane, Vector2 } from 'three';
 import { BlockPalette } from '../components/ui/BlockPalette';
@@ -108,10 +108,25 @@ const DragDropHandler = ({ onPlaceBlock }: { onPlaceBlock: (position: Vector3) =
 };
 
 export const EditorScene = () => {
-  const { activeProject, addBlock, updateBlockPosition } = useBlockStore();
+  const { 
+    activeProject, 
+    addBlock, 
+    updateBlockPosition,
+    selectedBlockId,
+    selectBlock,
+    isDraggingBlock
+  } = useBlockStore();
+  
   const gridRef = useRef(null);
   const [dragBlockType, setDragBlockType] = useState<BlockType | null>(null);
   const [dragBlockColor, setDragBlockColor] = useState<string>('#f44336');
+  
+  // 地面クリックハンドラ
+  const handleClick = (e: any) => {
+    e.stopPropagation();
+    // 地面クリックでブロックの選択を解除
+    selectBlock(null);
+  };
   
   // ブロックのドラッグを開始したときのハンドラ
   const handleBlockDragStart = (type: BlockType, color: string) => {
@@ -157,24 +172,26 @@ export const EditorScene = () => {
         
         {/* グリッド表示 */}
         {activeProject?.settings.gridEnabled && (
-          <Grid
-            ref={gridRef}
-            infiniteGrid
-            cellSize={activeProject.settings.gridSize}
-            fadeDistance={50}
-            fadeStrength={1.5}
+          <gridHelper 
+            args={[100, 100, "#444444", "#222222"]} 
+            position={[0, 0, 0]}
+            scale={[activeProject.settings.gridSize, 1, activeProject.settings.gridSize]}
           />
         )}
         
         {/* 地面 */}
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0, 0]}
+          onClick={handleClick}
+        >
           <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial color="#8a8a8a" />
+          <meshStandardMaterial color="#111111" />
         </mesh>
         
         {/* ブロックの描画 */}
         {activeProject?.blocks.map((block) => (
-          <Block 
+          <BlockComponent 
             key={block.id} 
             block={block} 
             onMove={handleBlockMove}
@@ -184,27 +201,27 @@ export const EditorScene = () => {
         {/* ドラッグ&ドロップハンドラ */}
         <DragDropHandler onPlaceBlock={handlePlaceBlock} />
         
-        {/* カメラコントロール */}
-        <OrbitControls makeDefault />
+        {/* カメラコントロール - ドラッグ中は無効化 */}
+        <OrbitControls 
+          enabled={!isDraggingBlock} 
+          makeDefault 
+        />
         
         {/* 環境光 */}
         <Environment preset={activeProject?.settings.lightingMode === 'day' ? 'sunset' : 'night'} />
-      </Canvas>
       
-      {/* 使い方ガイド */}
-      <div style={{ 
-        position: 'absolute', 
-        bottom: '10px', 
-        right: '10px', 
-        background: 'rgba(255,255,255,0.7)', 
-        padding: '10px', 
-        borderRadius: '5px' 
-      }}>
-        <p>🖱️ 左側のブロックをドラッグして3D空間に配置</p>
-        <p>👆 ブロックをクリックして選択</p>
-        <p>✨ Shiftキー+クリックでブロックを削除</p>
-        <p>⚙️ 右上の設定でグリッドとスナップを調整</p>
-      </div>
+        {/* 操作ガイド */}
+        <Html position={[-15, 10, 0]}>
+          <div className="usage-guide">
+            <h3>Block World 操作方法</h3>
+            <p>👆 パレットからブロックをドラッグして配置</p>
+            <p>🔍 ブロックを選択してドラッグで移動</p>
+            <p>🔄 選択したブロックを右クリックして回転</p>
+            <p>❌ ブロックをダブルクリックで削除</p>
+            <p>⚙️ 設定パネルでグリッド表示と吸着を調整</p>
+          </div>
+        </Html>
+      </Canvas>
     </div>
   );
 }; 
