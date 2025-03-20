@@ -3,12 +3,13 @@ import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import { Block as BlockComponent } from '../components/blocks/Block';
 import { useBlockStore } from '../store/useBlockStore';
-import { Vector3, Raycaster, Plane, Vector2 } from 'three';
+import { Vector3, Raycaster, Plane, Vector2, Scene } from 'three';
 import { BlockPalette } from '../components/ui/BlockPalette';
 import { SettingsPanel } from '../components/ui/SettingsPanel';
 import { ToolBar, ToolType } from '../components/ui/ToolBar';
 import { HelpGuide } from '../components/ui/HelpGuide';
 import { BlockType } from '../types';
+import { ExportPanel } from '../components/ui/ExportPanel';
 
 // カラーマッピング
 const colorMap: Record<string, string> = {
@@ -135,6 +136,7 @@ const DragDropHandler = ({ onPlaceBlock }: { onPlaceBlock: (position: Vector3) =
   return null;
 };
 
+// シーン全体のコンポーネント（ThreeJSのコンテキストの外部で使用）
 export const EditorScene = () => {
   const { 
     activeProject, 
@@ -146,6 +148,7 @@ export const EditorScene = () => {
     selectBlock,
     isDraggingBlock,
     isRotatingBlock,
+    isScalingBlock,
     activeTool,
     setActiveTool,
     removeBlock
@@ -154,6 +157,24 @@ export const EditorScene = () => {
   const gridRef = useRef(null);
   const [dragBlockType, setDragBlockType] = useState<BlockType | null>(null);
   const [dragBlockColor, setDragBlockColor] = useState<string>('#f44336');
+  const sceneRef = useRef<Scene | null>(null);
+  
+  // シーンの参照を取得するためのコンポーネント
+  const SceneCapture = () => {
+    const { scene } = useThree();
+    
+    useEffect(() => {
+      if (scene) {
+        sceneRef.current = scene;
+      }
+      
+      return () => {
+        sceneRef.current = null;
+      };
+    }, [scene]);
+    
+    return null;
+  };
   
   // キーボードイベントハンドラを追加
   useEffect(() => {
@@ -269,6 +290,7 @@ export const EditorScene = () => {
       <SettingsPanel />
       <ToolBar onToolChange={handleToolChange} />
       <HelpGuide />
+      <ExportPanel sceneRef={sceneRef} />
       
       {/* 3Dシーン */}
       <Canvas 
@@ -276,6 +298,9 @@ export const EditorScene = () => {
         camera={{ position: [10, 10, 10], fov: 50 }}
         style={{ background: activeProject.settings.backgroundColor }}
       >
+        {/* シーン参照を取得 */}
+        <SceneCapture />
+        
         {/* 光源 */}
         <ambientLight intensity={0.5} />
         <directionalLight 
@@ -322,7 +347,7 @@ export const EditorScene = () => {
         
         {/* カメラコントロール */}
         <OrbitControls 
-          enabled={!isDraggingBlock && !isRotatingBlock} 
+          enabled={!isDraggingBlock && !isRotatingBlock && !isScalingBlock} 
           makeDefault 
           minPolarAngle={0}
           maxPolarAngle={Math.PI / 2 - 0.1}

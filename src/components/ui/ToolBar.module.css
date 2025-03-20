@@ -1,0 +1,70 @@
+.toolBar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 20px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 400px;
+}
+
+.toolsContainer {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.toolButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f1f1f1;
+  border: none;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  width: 80px;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.toolButton:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
+}
+
+.toolButton.active {
+  background-color: #2196f3;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.toolIcon {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.toolName {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.helpSection {
+  background-color: #f8f8f8;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 5px;
+}
+
+.helpText p {
+  font-size: 14px;
+  margin: 0;
+  color: #555;
+  text-align: center;
+} 

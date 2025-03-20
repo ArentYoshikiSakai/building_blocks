@@ -9,6 +9,7 @@ interface BlockState {
   selectedBlockId: string | null;
   isDraggingBlock: boolean; // ドラッグ状態を追跡
   isRotatingBlock: boolean; // 回転状態を追跡
+  isScalingBlock: boolean; // スケーリング状態を追跡
   activeTool: ToolType; // アクティブなツール
   
   // プロジェクト操作
@@ -27,6 +28,7 @@ interface BlockState {
   // ドラッグ状態操作
   setDraggingBlock: (isDragging: boolean) => void;
   setRotatingBlock: (isRotating: boolean) => void;
+  setScalingBlock: (isScaling: boolean) => void;
   
   // ツール操作
   setActiveTool: (tool: ToolType) => void;
@@ -50,6 +52,7 @@ export const useBlockStore = create<BlockState>((set) => ({
   selectedBlockId: null,
   isDraggingBlock: false, // 初期値はfalse
   isRotatingBlock: false, // 初期値はfalse
+  isScalingBlock: false, // 初期値はfalse
   activeTool: 'select', // 初期値は選択ツール
   
   createNewProject: (name) => {
@@ -197,6 +200,11 @@ export const useBlockStore = create<BlockState>((set) => ({
   // 回転状態を設定するアクション
   setRotatingBlock: (isRotating) => {
     set({ isRotatingBlock: isRotating });
+  },
+  
+  // スケーリング状態を設定するアクション
+  setScalingBlock: (isScaling) => {
+    set({ isScalingBlock: isScaling });
   },
   
   // アクティブツールを設定するアクション

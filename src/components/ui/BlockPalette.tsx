@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import styled from 'styled-components';
 import { BlockType } from '../../types';
+import styles from './BlockPalette.module.css';
 
 interface BlockPaletteProps {
   onDragStart: (type: BlockType, color: string) => void;
@@ -202,28 +203,28 @@ const ColorDot = styled.div<{ bgColor: string; isSelected: boolean }>`
   }
 `;
 
-// 利用可能な色のプリセット
-const colorPresets = [
+// プリセットカラーパレット
+const presetColors = [
   '#f44336', // 赤
   '#e91e63', // ピンク
   '#9c27b0', // 紫
-  '#673ab7', // 深紫
+  '#673ab7', // ディープパープル
   '#3f51b5', // インディゴ
-  '#2196f3', // 青
+  '#2196f3', // ブルー
   '#03a9f4', // ライトブルー
   '#00bcd4', // シアン
   '#009688', // ティール
-  '#4caf50', // 緑
+  '#4caf50', // グリーン
   '#8bc34a', // ライトグリーン
   '#cddc39', // ライム
-  '#ffeb3b', // 黄色
+  '#ffeb3b', // イエロー
   '#ffc107', // アンバー
   '#ff9800', // オレンジ
   '#ff5722', // ディープオレンジ
-  '#795548', // 茶色
+  '#795548', // ブラウン
   '#9e9e9e', // グレー
-  '#607d8b', // 青グレー
-  '#ffffff', // 白
+  '#607d8b', // ブルーグレー
+  '#ffffff', // ホワイト
 ];
 
 // 利用可能なブロックの種類とそのアイコン/表示名/カテゴリー
@@ -239,9 +240,10 @@ const blockTypesInfo: BlockInfo[] = [
 ];
 
 export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
-  const [selectedColor, setSelectedColor] = useState(colorPresets[0]);
+  const [selectedColor, setSelectedColor] = useState(presetColors[0]);
   const [activeCategory, setActiveCategory] = useState<BlockCategory>('基本');
   const [isPaletteCollapsed, setIsPaletteCollapsed] = useState(false);
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   // 選択されたカテゴリーのブロックをフィルタリング
   const filteredBlocks = blockTypesInfo.filter(block => block.category === activeCategory);
@@ -279,6 +281,17 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
 
   // 利用可能なカテゴリーの配列（重複を排除）
   const availableCategories = Array.from(new Set(blockTypesInfo.map(block => block.category)));
+
+  // カラーピッカーの表示/非表示を切り替え
+  const toggleColorPicker = () => {
+    setShowColorPicker(!showColorPicker);
+  };
+  
+  // 色の選択
+  const handleColorSelect = (color: string) => {
+    setSelectedColor(color);
+    setShowColorPicker(false);
+  };
 
   if (isPaletteCollapsed) {
     return (
@@ -328,16 +341,34 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
       
       <ColorPickerSection>
         <ColorPickerTitle>ブロックの色</ColorPickerTitle>
-        <ColorPicker>
-          {colorPresets.map(color => (
-            <ColorDot 
-              key={color}
-              bgColor={color}
-              isSelected={selectedColor === color}
-              onClick={() => setSelectedColor(color)}
-            />
-          ))}
-        </ColorPicker>
+        <div className={styles.colorPickerSection}>
+          <div 
+            className={styles.selectedColor} 
+            style={{ backgroundColor: selectedColor }}
+            onClick={toggleColorPicker}
+          />
+          <button 
+            className={styles.colorPickerButton}
+            onClick={toggleColorPicker}
+          >
+            色を選択
+          </button>
+          
+          {showColorPicker && (
+            <div className={styles.colorPickerPopup}>
+              <div className={styles.colorGrid}>
+                {presetColors.map((color) => (
+                  <div
+                    key={color}
+                    className={styles.colorOption}
+                    style={{ backgroundColor: color }}
+                    onClick={() => handleColorSelect(color)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </ColorPickerSection>
     </PaletteContainer>
   );

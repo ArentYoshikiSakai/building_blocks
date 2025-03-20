@@ -33,6 +33,7 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
     removeBlock,
     setDraggingBlock,
     setRotatingBlock,
+    setScalingBlock,
     activeTool
   } = useBlockStore();
   
@@ -213,6 +214,7 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
       if ((e.shiftKey && activeTool === 'select') || scaleOnly) {
         // サイズ変更モードを開始
         setIsScaling(true);
+        setScalingBlock(true); // グローバルなスケーリング状態を更新
         gl.domElement.style.cursor = 'ns-resize';
         
         // 元のスケールと開始位置を保存
@@ -258,6 +260,7 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
       // サイズ変更モードが終了
       if (isScaling) {
         setIsScaling(false);
+        setScalingBlock(false); // グローバルなスケーリング状態を更新
         gl.domElement.style.cursor = 'auto';
       }
       
@@ -336,6 +339,8 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
         roughness={0.5}
         emissive={hovered || isSelected ? "#ffffff" : "#000000"}
         emissiveIntensity={hovered || isSelected ? 0.1 : 0}
+        transparent={block.type === 'window'}
+        opacity={block.type === 'window' ? 0.6 : 1}
       />
     </mesh>
   );
