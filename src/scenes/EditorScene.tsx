@@ -136,8 +136,14 @@ const DragDropHandler = ({ onPlaceBlock }: { onPlaceBlock: (position: Vector3) =
   return null;
 };
 
+// EditorSceneの型定義を更新
+interface EditorSceneProps {
+  onAuthClick?: () => void;
+  onProjectClick?: () => void;
+}
+
 // シーン全体のコンポーネント（ThreeJSのコンテキストの外部で使用）
-export const EditorScene = () => {
+export const EditorScene: React.FC<EditorSceneProps> = ({ onAuthClick, onProjectClick }) => {
   const { 
     activeProject, 
     addBlock, 
@@ -288,7 +294,11 @@ export const EditorScene = () => {
       {/* UIコンポーネント */}
       <BlockPalette onDragStart={handleBlockDragStart} />
       <SettingsPanel />
-      <ToolBar onToolChange={handleToolChange} />
+      <ToolBar 
+        onToolChange={handleToolChange}
+        onAuthClick={onAuthClick}
+        onProjectClick={onProjectClick}
+      />
       <HelpGuide />
       <ExportPanel sceneRef={sceneRef} />
       

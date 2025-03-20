@@ -15,9 +15,11 @@ const toolInfo = {
 
 interface ToolBarProps {
   onToolChange: (tool: ToolType) => void;
+  onAuthClick?: () => void;
+  onProjectClick?: () => void;
 }
 
-export const ToolBar = ({ onToolChange }: ToolBarProps) => {
+export const ToolBar = ({ onToolChange, onAuthClick, onProjectClick }: ToolBarProps) => {
   const [activeTool, setActiveTool] = useState<ToolType>('select');
   const { selectedBlockId, removeBlock } = useBlockStore();
   
@@ -56,6 +58,26 @@ export const ToolBar = ({ onToolChange }: ToolBarProps) => {
             <span className={styles.toolName}>{tool.name}</span>
           </button>
         ))}
+      </div>
+      
+      <div className={styles.userActions}>
+        <button
+          className={styles.projectButton}
+          onClick={onProjectClick}
+          title="プロジェクト"
+        >
+          📁
+          <span className={styles.tooltip}>プロジェクト</span>
+        </button>
+        
+        <button
+          className={styles.authButton}
+          onClick={onAuthClick}
+          title="ログイン/登録"
+        >
+          👤
+          <span className={styles.tooltip}>ログイン/登録</span>
+        </button>
       </div>
       
       <div className={styles.helpSection}>

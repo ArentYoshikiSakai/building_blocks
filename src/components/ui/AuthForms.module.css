@@ -1,0 +1,177 @@
+.authFormContainer {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 24px;
+  width: 360px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-width: 90vw;
+}
+
+.formTitle {
+  color: #333;
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 24px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+.input {
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 16px;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: #4c84ff;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(76, 132, 255, 0.2);
+}
+
+.submitButton {
+  background: #4c84ff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+
+.submitButton:hover {
+  background: #3a70e3;
+}
+
+.submitButton:disabled {
+  background: #a0bdff;
+  cursor: not-allowed;
+}
+
+.errorMessage {
+  background: #ffebee;
+  color: #d32f2f;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  position: relative;
+  font-size: 14px;
+}
+
+.errorCloseButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #d32f2f;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.separator {
+  text-align: center;
+  margin: 20px 0;
+  font-size: 14px;
+  color: #888;
+  position: relative;
+}
+
+.separator::before,
+.separator::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: #ddd;
+}
+
+.separator::before {
+  left: 0;
+}
+
+.separator::after {
+  right: 0;
+}
+
+.googleButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: white;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  width: 100%;
+}
+
+.googleButton:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.googleButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.googleIcon {
+  font-weight: bold;
+  color: #4285F4;
+  font-size: 18px;
+}
+
+.switchFormText {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 14px;
+  color: #666;
+}
+
+.switchFormButton {
+  background: none;
+  border: none;
+  color: #4c84ff;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 14px;
+}
+
+.switchFormButton:hover {
+  text-decoration: underline;
+}
+
+.switchFormButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  text-decoration: none;
+} 
