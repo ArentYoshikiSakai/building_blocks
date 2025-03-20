@@ -2,17 +2,19 @@ import { useEffect, useState } from 'react'
 import { EditorScene } from './scenes/EditorScene'
 import { useBlockStore } from './store/useBlockStore'
 import { useProjectStore } from './stores/useProjectStore'
-import { AuthProvider } from './firebase/authContext'
-import { AuthModal } from './components/ui/AuthModal'
+import { AuthProvider } from './contexts/AuthContext'
+import { AuthModal } from './components/auth/AuthModal'
 import { ProjectModal } from './components/ui/ProjectModal'
 import { Project } from './models/Project'
 import './App.css'
+import { useAuth } from './contexts/AuthContext'
 
 function App() {
   const { createNewProject, activeProject } = useBlockStore()
   const { setCurrentProject } = useProjectStore()
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const { user } = useAuth()
 
   // アプリケーション開始時に新しいプロジェクトを作成
   useEffect(() => {
@@ -21,7 +23,7 @@ function App() {
     }
   }, [activeProject, createNewProject])
 
-  const handleOpenAuthModal = () => {
+  const handleAuthClick = () => {
     setIsAuthModalOpen(true)
   }
 
@@ -45,7 +47,7 @@ function App() {
     <AuthProvider>
       <div className="app-container">
         <EditorScene 
-          onAuthClick={handleOpenAuthModal} 
+          onAuthClick={handleAuthClick} 
           onProjectClick={handleOpenProjectModal}
         />
         <AuthModal 
