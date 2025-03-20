@@ -14,7 +14,6 @@ interface BlockProps {
 export const Block = ({ block, onMove }: BlockProps) => {
   const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
-  const [clicked, setClicked] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const { camera, gl } = useThree();
   
@@ -37,6 +36,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
   const dragPlane = useRef(new Plane(new Vector3(0, 1, 0), 0));
   const originalPosition = useRef<Vector3 | null>(null);
+  const isPointerDown = useRef(false);
   
   // 選択状態の場合、ハイライト効果を適用
   useFrame(() => {
@@ -109,13 +109,15 @@ export const Block = ({ block, onMove }: BlockProps) => {
   
   const handlePointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    isPointerDown.current = true;
     
+    // 単一のクリックで選択する
     if (!isSelected) {
       selectBlock(block.id);
       return;
     }
     
-    // ドラッグ開始
+    // 選択済みなら即ドラッグ開始
     setIsDragging(true);
     setDraggingBlock(true); // グローバルなドラッグ状態を更新
     gl.domElement.style.cursor = 'grabbing';
@@ -130,25 +132,34 @@ export const Block = ({ block, onMove }: BlockProps) => {
   const handlePointerUp = (e: React.PointerEvent) => {
     e.stopPropagation();
     
-    // ドラッグ終了
+    // ドラッグ操作が行われていた場合のみ終了処理
     if (isDragging) {
       setIsDragging(false);
       setDraggingBlock(false); // グローバルなドラッグ状態を更新
       gl.domElement.style.cursor = 'auto';
     }
+    
+    isPointerDown.current = false;
   };
   
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
+    // Shiftキーを押しながらクリックで削除
     if (e.shiftKey) {
-      // Shiftキーを押しながらクリックで削除
       removeBlock(block.id);
-    } else if (!isDragging) {
-      // ドラッグでなければ選択状態を切り替え
-      setClicked(!clicked);
-      selectBlock(isSelected ? null : block.id);
+      return;
     }
+    
+    // クリックでの選択解除は、ダブルクリックで行うようにする
+    // または、明示的に別のブロックや地面をクリックしたときに解除される
+    
+    // 注: 以下のコードをコメントアウトすることで、クリックのみでは選択解除しないようにする
+    /*
+    if (isSelected && !isDragging) {
+      selectBlock(null);
+    }
+    */
   };
   
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -216,6 +227,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
         setDraggingBlock(false); // グローバルなドラッグ状態を更新
         gl.domElement.style.cursor = 'auto';
       }
+      isPointerDown.current = false;
     };
     
     // ドラッグ中はイベントをグローバルに追加
