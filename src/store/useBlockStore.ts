@@ -7,6 +7,7 @@ interface BlockState {
   activeProject: Project | null;
   selectedBlockId: string | null;
   isDraggingBlock: boolean; // ドラッグ状態を追跡
+  isRotatingBlock: boolean; // 回転状態を追跡
   
   // プロジェクト操作
   createNewProject: (name: string) => void;
@@ -22,6 +23,7 @@ interface BlockState {
   
   // ドラッグ状態操作
   setDraggingBlock: (isDragging: boolean) => void;
+  setRotatingBlock: (isRotating: boolean) => void;
   
   // 設定操作
   updateProjectSettings: (settings: Partial<ProjectSettings>) => void;
@@ -41,6 +43,7 @@ export const useBlockStore = create<BlockState>((set) => ({
   activeProject: null,
   selectedBlockId: null,
   isDraggingBlock: false, // 初期値はfalse
+  isRotatingBlock: false, // 初期値はfalse
   
   createNewProject: (name) => {
     const newProject: Project = {
@@ -164,6 +167,11 @@ export const useBlockStore = create<BlockState>((set) => ({
   // ドラッグ状態を設定するアクション
   setDraggingBlock: (isDragging) => {
     set({ isDraggingBlock: isDragging });
+  },
+  
+  // 回転状態を設定するアクション
+  setRotatingBlock: (isRotating) => {
+    set({ isRotatingBlock: isRotating });
   },
   
   updateProjectSettings: (settings) => {

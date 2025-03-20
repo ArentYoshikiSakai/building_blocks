@@ -28,7 +28,8 @@ export const Block = ({ block, onMove }: BlockProps) => {
     updateBlockPosition,
     updateBlockRotation,
     removeBlock,
-    setDraggingBlock
+    setDraggingBlock,
+    setRotatingBlock
   } = useBlockStore();
   
   const isSelected = selectedBlockId === block.id;
@@ -146,6 +147,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
       
       // 回転モードを開始
       setIsRotating(true);
+      setRotatingBlock(true); // グローバルな回転状態を更新
       gl.domElement.style.cursor = 'move';
       
       // 元の回転と開始位置を保存
@@ -183,6 +185,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
     // 回転モードが終了
     if (isRotating) {
       setIsRotating(false);
+      setRotatingBlock(false); // グローバルな回転状態を更新
       gl.domElement.style.cursor = 'auto';
     }
     
@@ -272,6 +275,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
       
       if (isRotating) {
         setIsRotating(false);
+        setRotatingBlock(false); // グローバルな回転状態を更新
         gl.domElement.style.cursor = 'auto';
       }
       
@@ -301,7 +305,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, isRotating, gl, setDraggingBlock]);
+  }, [isDragging, isRotating, gl, setDraggingBlock, setRotatingBlock]);
   
   return (
     <>

@@ -114,7 +114,8 @@ export const EditorScene = () => {
     updateBlockPosition,
     selectedBlockId,
     selectBlock,
-    isDraggingBlock
+    isDraggingBlock,
+    isRotatingBlock
   } = useBlockStore();
   
   const gridRef = useRef(null);
@@ -201,9 +202,9 @@ export const EditorScene = () => {
         {/* ドラッグ&ドロップハンドラ */}
         <DragDropHandler onPlaceBlock={handlePlaceBlock} />
         
-        {/* カメラコントロール - ドラッグ中は無効化 */}
+        {/* カメラコントロール - ドラッグ中または回転中は無効化 */}
         <OrbitControls 
-          enabled={!isDraggingBlock} 
+          enabled={!isDraggingBlock && !isRotatingBlock} 
           makeDefault 
         />
         
@@ -216,7 +217,7 @@ export const EditorScene = () => {
             <h3>Block World 操作方法</h3>
             <p>👆 パレットからブロックをドラッグして配置</p>
             <p>🔍 ブロックを選択してドラッグで移動</p>
-            <p>🔄 選択したブロックを右クリックして回転</p>
+            <p>🔄 選択したブロックを右クリック+ドラッグして回転</p>
             <p>❌ ブロックをダブルクリックで削除</p>
             <p>⚙️ 設定パネルでグリッド表示と吸着を調整</p>
           </div>
