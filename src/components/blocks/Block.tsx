@@ -15,7 +15,8 @@ export const Block = ({ block, onMove }: BlockProps) => {
   const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const { camera, gl } = useThree();
+  const [isRotating, setIsRotating] = useState(false);
+  const { camera, gl, mouse } = useThree();
   
   // コンテキストメニュー用の状態
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -32,10 +33,12 @@ export const Block = ({ block, onMove }: BlockProps) => {
   
   const isSelected = selectedBlockId === block.id;
   
-  // ドラッグ用の参照ポイント
+  // ドラッグ/回転用の参照ポイント
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
+  const rotationStartPoint = useRef<{ x: number; y: number } | null>(null);
   const dragPlane = useRef(new Plane(new Vector3(0, 1, 0), 0));
   const originalPosition = useRef<Vector3 | null>(null);
+  const originalRotation = useRef<Euler | null>(null);
   const isPointerDown = useRef(false);
   
   // 選択状態の場合、ハイライト効果を適用
@@ -51,23 +54,46 @@ export const Block = ({ block, onMove }: BlockProps) => {
   
   // ドラッグハンドリング
   useFrame(({ camera, mouse }) => {
-    if (!isDragging || !isSelected || !meshRef.current) return;
+    if (!isDragging && !isRotating || !isSelected || !meshRef.current) return;
     
-    // 地面との交点を計算
-    const blockRaycaster = new Raycaster();
-    blockRaycaster.setFromCamera(mouse, camera);
+    if (isDragging) {
+      // 移動ロジック（従来通り）
+      const blockRaycaster = new Raycaster();
+      blockRaycaster.setFromCamera(mouse, camera);
+      
+      const intersectPoint = new Vector3();
+      blockRaycaster.ray.intersectPlane(dragPlane.current, intersectPoint);
+      
+      // Y位置を保持
+      intersectPoint.y = block.position.y;
+      
+      if (onMove) {
+        onMove(block.id, intersectPoint);
+      } else {
+        updateBlockPosition(block.id, intersectPoint);
+      }
+    }
     
-    const intersectPoint = new Vector3();
-    blockRaycaster.ray.intersectPlane(dragPlane.current, intersectPoint);
-    
-    // Y位置を保持
-    intersectPoint.y = block.position.y;
-    
-    // onMoveコールバックが提供されていれば使用する
-    if (onMove) {
-      onMove(block.id, intersectPoint);
-    } else {
-      updateBlockPosition(block.id, intersectPoint);
+    if (isRotating && rotationStartPoint.current && originalRotation.current) {
+      // 回転ロジック
+      const deltaX = mouse.x - rotationStartPoint.current.x;
+      const deltaY = mouse.y - rotationStartPoint.current.y;
+      
+      // 現在の回転を取得
+      const currentRotation = new Euler(
+        originalRotation.current.x,
+        originalRotation.current.y,
+        originalRotation.current.z
+      );
+      
+      // X軸の回転（上下のマウス移動で回転）
+      currentRotation.x = originalRotation.current.x + deltaY * 5;
+      
+      // Y軸の回転（左右のマウス移動で回転）
+      currentRotation.y = originalRotation.current.y - deltaX * 5;
+      
+      // 回転を適用
+      updateBlockRotation(block.id, currentRotation);
     }
   });
   
@@ -111,13 +137,35 @@ export const Block = ({ block, onMove }: BlockProps) => {
     e.stopPropagation();
     isPointerDown.current = true;
     
-    // 単一のクリックで選択する
+    // 右クリック（button=2）の場合は回転モードを開始
+    if (e.button === 2) {
+      // ブロックが選択されていない場合は先に選択
+      if (!isSelected) {
+        selectBlock(block.id);
+      }
+      
+      // 回転モードを開始
+      setIsRotating(true);
+      gl.domElement.style.cursor = 'move';
+      
+      // 元の回転と開始位置を保存
+      originalRotation.current = new Euler(
+        block.rotation.x,
+        block.rotation.y,
+        block.rotation.z
+      );
+      rotationStartPoint.current = { x: mouse.x, y: mouse.y };
+      
+      return;
+    }
+    
+    // 単一のクリックで選択する（左クリックの場合）
     if (!isSelected) {
       selectBlock(block.id);
       return;
     }
     
-    // 選択済みなら即ドラッグ開始
+    // 選択済みなら即ドラッグ開始（左クリックの場合）
     setIsDragging(true);
     setDraggingBlock(true); // グローバルなドラッグ状態を更新
     gl.domElement.style.cursor = 'grabbing';
@@ -131,6 +179,12 @@ export const Block = ({ block, onMove }: BlockProps) => {
   
   const handlePointerUp = (e: React.PointerEvent) => {
     e.stopPropagation();
+    
+    // 回転モードが終了
+    if (isRotating) {
+      setIsRotating(false);
+      gl.domElement.style.cursor = 'auto';
+    }
     
     // ドラッグ操作が行われていた場合のみ終了処理
     if (isDragging) {
@@ -168,24 +222,12 @@ export const Block = ({ block, onMove }: BlockProps) => {
     removeBlock(block.id);
   };
   
-  // 右クリックハンドラ - コンテキストメニューを表示
+  // 右クリックハンドラ - 右クリック＋ドラッグ回転のためにデフォルトのメニュー表示を防止
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // 先にブロックを選択
-    if (!isSelected) {
-      selectBlock(block.id);
-    }
-    
-    // コンテキストメニューの位置を設定
-    setContextMenuPosition({ x: e.clientX, y: e.clientY });
-    setShowContextMenu(true);
-  };
-  
-  // コンテキストメニューを閉じる
-  const handleCloseContextMenu = () => {
-    setShowContextMenu(false);
+    // コンテキストメニューは表示しない（右クリック＋ドラッグで直接回転するため）
   };
   
   // 回転処理
@@ -216,7 +258,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
   // ドキュメント全体のポインターイベントを処理
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
-      if (isDragging) {
+      if (isDragging || isRotating) {
         e.preventDefault();
       }
     };
@@ -227,20 +269,39 @@ export const Block = ({ block, onMove }: BlockProps) => {
         setDraggingBlock(false); // グローバルなドラッグ状態を更新
         gl.domElement.style.cursor = 'auto';
       }
+      
+      if (isRotating) {
+        setIsRotating(false);
+        gl.domElement.style.cursor = 'auto';
+      }
+      
       isPointerDown.current = false;
     };
     
-    // ドラッグ中はイベントをグローバルに追加
-    if (isDragging) {
+    // ドラッグや回転中はイベントをグローバルに追加
+    if (isDragging || isRotating) {
       document.addEventListener('pointermove', handlePointerMove);
       document.addEventListener('pointerup', handlePointerUp);
+      
+      // 右クリックメニュー無効化
+      if (isRotating) {
+        const preventContextMenu = (e: MouseEvent) => {
+          e.preventDefault();
+        };
+        document.addEventListener('contextmenu', preventContextMenu);
+        return () => {
+          document.removeEventListener('pointermove', handlePointerMove);
+          document.removeEventListener('pointerup', handlePointerUp);
+          document.removeEventListener('contextmenu', preventContextMenu);
+        };
+      }
     }
     
     return () => {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, gl, setDraggingBlock]);
+  }, [isDragging, isRotating, gl, setDraggingBlock]);
   
   return (
     <>
@@ -258,22 +319,12 @@ export const Block = ({ block, onMove }: BlockProps) => {
       >
         {renderBlockMesh()}
         <meshStandardMaterial 
-          color={isDragging ? '#ff0000' : hovered ? '#ff9e00' : isSelected ? '#1e88e5' : block.color} 
+          color={isRotating ? '#00cc00' : isDragging ? '#ff0000' : hovered ? '#ff9e00' : isSelected ? '#1e88e5' : block.color} 
           wireframe={false}
           transparent={block.type === 'window'}
           opacity={block.type === 'window' ? 0.5 : 1}
         />
       </mesh>
-      
-      {/* コンテキストメニュー */}
-      {showContextMenu && createPortal(
-        <ContextMenu 
-          position={contextMenuPosition}
-          onClose={handleCloseContextMenu}
-          onRotate={handleRotate}
-        />,
-        document.body
-      )}
     </>
   );
 }; 
