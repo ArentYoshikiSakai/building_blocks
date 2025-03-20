@@ -5,13 +5,23 @@ import { Block } from '../components/blocks/Block';
 import { useBlockStore } from '../store/useBlockStore';
 import { Vector3, Raycaster, Plane, Vector2 } from 'three';
 import { BlockPalette } from '../components/ui/BlockPalette';
+import { SettingsPanel } from '../components/ui/SettingsPanel';
 import { BlockType } from '../types';
+
+// スナップ用のユーティリティ関数
+const snapToGrid = (value: number, gridSize: number): number => {
+  return Math.round(value / gridSize) * gridSize;
+};
 
 // レイキャスト用のヘルパーコンポーネント
 const DragDropHandler = ({ onPlaceBlock }: { onPlaceBlock: (position: Vector3) => void }) => {
   const { camera, gl } = useThree();
   const groundPlane = new Plane(new Vector3(0, 1, 0), 0); // Y軸を上向きとした地面の平面
   const raycaster = new Raycaster();
+  const { activeProject } = useBlockStore();
+  
+  // 位置のプレビュー表示用
+  const [previewPosition, setPreviewPosition] = useState<Vector3 | null>(null);
   
   // ドラッグオーバーイベントのハンドラ
   const handleDragOver = useCallback((e: DragEvent) => {
@@ -19,57 +29,86 @@ const DragDropHandler = ({ onPlaceBlock }: { onPlaceBlock: (position: Vector3) =
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'copy';
     }
-  }, []);
+    
+    // マウス位置をキャンバス上の正規化座標に変換
+    if (activeProject && e.clientX && e.clientY) {
+      const rect = gl.domElement.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      // レイキャストして地面との交点を計算
+      raycaster.setFromCamera(new Vector2(x, y), camera);
+      const intersectPoint = new Vector3();
+      raycaster.ray.intersectPlane(groundPlane, intersectPoint);
+      
+      // グリッドサイズとスナップ設定に基づいて位置を調整
+      if (activeProject.settings.snapToGrid) {
+        const { gridSize } = activeProject.settings;
+        intersectPoint.x = snapToGrid(intersectPoint.x, gridSize);
+        intersectPoint.y = 0.5; // ブロックの高さの半分を地面から上に配置
+        intersectPoint.z = snapToGrid(intersectPoint.z, gridSize);
+      } else {
+        intersectPoint.y = 0.5;
+      }
+      
+      setPreviewPosition(intersectPoint);
+    }
+  }, [camera, gl, raycaster, activeProject]);
   
   // ドロップイベントのハンドラ
   const handleDrop = useCallback((e: DragEvent) => {
     e.preventDefault();
     
     // dataTransferがnullでないことを確認
-    if (!e.dataTransfer) return;
+    if (!e.dataTransfer || !activeProject) return;
     
     // ブロックタイプとカラーを取得
     const blockType = e.dataTransfer.getData('blockType');
     const blockColor = e.dataTransfer.getData('blockColor');
     
-    if (!blockType) return;
-    
-    // マウス位置をキャンバス上の正規化座標に変換
-    const rect = gl.domElement.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    
-    // レイキャストして地面との交点を計算
-    raycaster.setFromCamera(new Vector2(x, y), camera);
-    const intersectPoint = new Vector3();
-    raycaster.ray.intersectPlane(groundPlane, intersectPoint);
-    
-    // グリッドにスナップ（整数値に丸める）
-    intersectPoint.x = Math.round(intersectPoint.x);
-    intersectPoint.y = 0.5; // ブロックの高さの半分を地面から上に配置
-    intersectPoint.z = Math.round(intersectPoint.z);
+    if (!blockType || !previewPosition) return;
     
     // 親コンポーネントに位置を通知
-    onPlaceBlock(intersectPoint);
-  }, [camera, gl, raycaster, onPlaceBlock]);
+    onPlaceBlock(previewPosition);
+    
+    // プレビューをクリア
+    setPreviewPosition(null);
+  }, [activeProject, previewPosition, onPlaceBlock]);
+  
+  // ドラッグリーブイベントのハンドラ
+  const handleDragLeave = useCallback(() => {
+    setPreviewPosition(null);
+  }, []);
   
   // キャンバスにイベントハンドラを追加・削除
   useEffect(() => {
     const canvas = gl.domElement;
     canvas.addEventListener('dragover', handleDragOver);
     canvas.addEventListener('drop', handleDrop);
+    canvas.addEventListener('dragleave', handleDragLeave);
     
     return () => {
       canvas.removeEventListener('dragover', handleDragOver);
       canvas.removeEventListener('drop', handleDrop);
+      canvas.removeEventListener('dragleave', handleDragLeave);
     };
-  }, [gl, handleDragOver, handleDrop]);
+  }, [gl, handleDragOver, handleDrop, handleDragLeave]);
+  
+  // 配置プレビューの表示
+  if (previewPosition) {
+    return (
+      <mesh position={[previewPosition.x, previewPosition.y, previewPosition.z]}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="rgba(100, 149, 237, 0.5)" transparent opacity={0.5} />
+      </mesh>
+    );
+  }
   
   return null;
 };
 
 export const EditorScene = () => {
-  const { activeProject, addBlock } = useBlockStore();
+  const { activeProject, addBlock, updateBlockPosition } = useBlockStore();
   const gridRef = useRef(null);
   const [dragBlockType, setDragBlockType] = useState<BlockType | null>(null);
   const [dragBlockColor, setDragBlockColor] = useState<string>('#f44336');
@@ -86,10 +125,28 @@ export const EditorScene = () => {
     addBlock(dragBlockType, position, dragBlockColor);
   };
   
+  // ブロック移動時のスナップ機能
+  const handleBlockMove = (id: string, position: Vector3) => {
+    if (activeProject && activeProject.settings.snapToGrid) {
+      const { gridSize } = activeProject.settings;
+      const snappedPosition = new Vector3(
+        snapToGrid(position.x, gridSize),
+        position.y, // Y軸は変更しない
+        snapToGrid(position.z, gridSize)
+      );
+      updateBlockPosition(id, snappedPosition);
+    } else {
+      updateBlockPosition(id, position);
+    }
+  };
+  
   return (
     <div style={{ width: '100%', height: '100vh' }}>
       {/* ブロックパレット */}
       <BlockPalette onDragStart={handleBlockDragStart} />
+      
+      {/* 設定パネル */}
+      <SettingsPanel />
       
       <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
         <ambientLight intensity={0.5} />
@@ -117,7 +174,11 @@ export const EditorScene = () => {
         
         {/* ブロックの描画 */}
         {activeProject?.blocks.map((block) => (
-          <Block key={block.id} block={block} />
+          <Block 
+            key={block.id} 
+            block={block} 
+            onMove={handleBlockMove}
+          />
         ))}
         
         {/* ドラッグ&ドロップハンドラ */}
@@ -142,6 +203,7 @@ export const EditorScene = () => {
         <p>🖱️ 左側のブロックをドラッグして3D空間に配置</p>
         <p>👆 ブロックをクリックして選択</p>
         <p>✨ Shiftキー+クリックでブロックを削除</p>
+        <p>⚙️ 右上の設定でグリッドとスナップを調整</p>
       </div>
     </div>
   );
