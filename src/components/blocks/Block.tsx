@@ -22,6 +22,10 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
   const [isScaling, setIsScaling] = useState(false);
   const { camera, gl, mouse } = useThree();
   
+  // ダブルクリック検出のための状態
+  const lastClickTimeRef = useRef<number>(0);
+  const clickDelay = 300; // ミリ秒単位でのダブルクリック検出の時間枠
+  
   // コンテキストメニュー用の状態
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -262,6 +266,20 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
+    // 現在の時間を取得
+    const currentTime = new Date().getTime();
+    
+    // ダブルクリックかどうかチェック
+    const isDoubleClick = currentTime - lastClickTimeRef.current < clickDelay;
+    
+    // クリック時間を更新
+    lastClickTimeRef.current = currentTime;
+    
+    // ダブルクリックの場合は何もしない
+    if (isDoubleClick) {
+      return;
+    }
+    
     // 削除ツールが選択されている場合は削除
     if (activeTool === 'delete') {
       removeBlock(block.id);
@@ -273,12 +291,6 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
       removeBlock(block.id);
       return;
     }
-  };
-  
-  const handleDoubleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    // ダブルクリックで削除
-    removeBlock(block.id);
   };
   
   // 右クリックハンドラ - 右クリック＋ドラッグ回転のためにデフォルトのメニュー表示を防止
@@ -384,7 +396,6 @@ export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockP
         scale={[block.scale.x, block.scale.y, block.scale.z]}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
-        onDoubleClick={handleDoubleClick}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
         onPointerOver={handlePointerOver}

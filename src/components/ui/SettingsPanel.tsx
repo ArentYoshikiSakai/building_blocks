@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useBlockStore } from '../../store/useBlockStore';
 import { ProjectSettings } from '../../types';
@@ -13,6 +13,8 @@ const SettingsPanelContainer = styled.div`
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   width: 250px;
   z-index: 1000;
+  max-height: 80vh;
+  overflow-y: auto;
 `;
 
 const SettingsTitle = styled.h3`
@@ -24,6 +26,14 @@ const SettingsTitle = styled.h3`
 
 const SettingsGroup = styled.div`
   margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #ddd;
+  
+  &:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
 `;
 
 const SettingsGroupTitle = styled.h4`
@@ -102,13 +112,108 @@ const SliderValue = styled.div`
   margin-top: -5px;
 `;
 
+const ColorPickerContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+`;
+
+const ColorPreview = styled.div<{ color: string }>`
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  background-color: ${props => props.color};
+  border: 1px solid #ddd;
+  margin-left: 10px;
+  cursor: pointer;
+`;
+
+const ColorInput = styled.input`
+  width: 100%;
+  margin-top: 5px;
+`;
+
+const TextureGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+`;
+
+const TextureOption = styled.div<{ selected: boolean }>`
+  border: 2px solid ${props => props.selected ? '#2196F3' : 'transparent'};
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const TextureColorSwatch = styled.div<{ color: string }>`
+  width: 100%;
+  height: 60px;
+  background-color: ${props => props.color};
+`;
+
+const TextureName = styled.div`
+  font-size: 12px;
+  text-align: center;
+  padding: 4px 0;
+  background-color: rgba(0, 0, 0, 0.05);
+`;
+
+const RadioGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+`;
+
+const RadioOption = styled.label`
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  
+  input {
+    margin-right: 8px;
+  }
+`;
+
+// テクスチャオプション
+const textureOptions = [
+  { id: 'grass', name: '草原', color: '#7cba3f' },
+  { id: 'sand', name: '砂地', color: '#e6d59e' },
+  { id: 'stone', name: '石畳', color: '#a7a7a7' },
+  { id: 'wood', name: '木製', color: '#8b5a2b' },
+];
+
+// 照明モードオプション
+const lightingOptions = [
+  { id: 'day', name: '昼間' },
+  { id: 'night', name: '夜間' },
+  { id: 'custom', name: 'カスタム' },
+];
+
 export const SettingsPanel = () => {
   const { activeProject, updateProjectSettings } = useBlockStore();
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   if (!activeProject) return null;
 
-  const { gridEnabled, gridSize, snapToGrid } = activeProject.settings;
+  const { 
+    gridEnabled, 
+    gridSize, 
+    snapToGrid, 
+    backgroundColor, 
+    groundTexture, 
+    lightingMode 
+  } = activeProject.settings;
 
+  // 各設定の更新ハンドラ
   const handleToggleGrid = () => {
     updateProjectSettings({ gridEnabled: !gridEnabled });
   };
@@ -122,10 +227,82 @@ export const SettingsPanel = () => {
     updateProjectSettings({ gridSize: size });
   };
 
+  const handleBackgroundColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    updateProjectSettings({ backgroundColor: e.target.value });
+  };
+
+  const handleTextureChange = useCallback((textureId: string) => {
+    updateProjectSettings({ groundTexture: textureId });
+  }, [updateProjectSettings]);
+
+  const handleLightingChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    updateProjectSettings({ lightingMode: e.target.value as 'day' | 'night' | 'custom' });
+  }, [updateProjectSettings]);
+
   return (
     <SettingsPanelContainer>
-      <SettingsTitle>設定</SettingsTitle>
+      <SettingsTitle>プロジェクト設定</SettingsTitle>
       
+      {/* 背景色設定 */}
+      <SettingsGroup>
+        <SettingsGroupTitle>背景設定</SettingsGroupTitle>
+        
+        <SettingsRow>
+          <SettingsLabel>背景色</SettingsLabel>
+          <ColorPreview 
+            color={backgroundColor} 
+            onClick={() => setShowColorPicker(!showColorPicker)}
+          />
+        </SettingsRow>
+        
+        {showColorPicker && (
+          <ColorInput 
+            type="color" 
+            value={backgroundColor} 
+            onChange={handleBackgroundColorChange}
+          />
+        )}
+      </SettingsGroup>
+      
+      {/* 地面テクスチャ設定 */}
+      <SettingsGroup>
+        <SettingsGroupTitle>地面テクスチャ</SettingsGroupTitle>
+        
+        <TextureGrid>
+          {textureOptions.map(texture => (
+            <TextureOption 
+              key={texture.id}
+              selected={groundTexture === texture.id}
+              onClick={() => handleTextureChange(texture.id)}
+            >
+              <TextureColorSwatch color={texture.color} />
+              <TextureName>{texture.name}</TextureName>
+            </TextureOption>
+          ))}
+        </TextureGrid>
+      </SettingsGroup>
+      
+      {/* 照明設定 */}
+      <SettingsGroup>
+        <SettingsGroupTitle>照明設定</SettingsGroupTitle>
+        
+        <RadioGroup>
+          {lightingOptions.map(option => (
+            <RadioOption key={option.id}>
+              <input 
+                type="radio" 
+                name="lighting" 
+                value={option.id} 
+                checked={lightingMode === option.id}
+                onChange={handleLightingChange}
+              />
+              {option.name}
+            </RadioOption>
+          ))}
+        </RadioGroup>
+      </SettingsGroup>
+      
+      {/* グリッド設定 */}
       <SettingsGroup>
         <SettingsGroupTitle>グリッド設定</SettingsGroupTitle>
         

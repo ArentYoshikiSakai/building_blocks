@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, Grid, Environment, Html } from '@react-three/drei';
 import { Block as BlockComponent } from '../components/blocks/Block';
@@ -10,9 +10,35 @@ import { ToolBar, ToolType } from '../components/ui/ToolBar';
 import { HelpGuide } from '../components/ui/HelpGuide';
 import { BlockType } from '../types';
 
+// カラーマッピング
+const colorMap: Record<string, string> = {
+  grass: '#7cba3f',
+  sand: '#e6d59e',
+  stone: '#a7a7a7',
+  wood: '#8b5a2b',
+};
+
 // スナップ用のユーティリティ関数
 const snapToGrid = (value: number, gridSize: number): number => {
   return Math.round(value / gridSize) * gridSize;
+};
+
+// 地面コンポーネント
+const Ground = ({ texture = 'grass', onClick }: { texture: string; onClick: (e: any) => void }) => {
+  // 指定されたテクスチャに対応する色を取得
+  const groundColor = colorMap[texture as keyof typeof colorMap] || '#7cba3f';
+  
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0, 0]}
+      onClick={onClick}
+      receiveShadow
+    >
+      <planeGeometry args={[100, 100]} />
+      <meshStandardMaterial color={groundColor} />
+    </mesh>
+  );
 };
 
 // レイキャスト用のヘルパーコンポーネント
@@ -121,12 +147,30 @@ export const EditorScene = () => {
     isDraggingBlock,
     isRotatingBlock,
     activeTool,
-    setActiveTool
+    setActiveTool,
+    removeBlock
   } = useBlockStore();
   
   const gridRef = useRef(null);
   const [dragBlockType, setDragBlockType] = useState<BlockType | null>(null);
   const [dragBlockColor, setDragBlockColor] = useState<string>('#f44336');
+  
+  // キーボードイベントハンドラを追加
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // DeleteキーまたはBackspaceキーでブロック削除
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBlockId) {
+        console.log(`Deleting block with ID: ${selectedBlockId}`);
+        removeBlock(selectedBlockId);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedBlockId, removeBlock]);
   
   // 地面クリックハンドラ
   const handleClick = (e: any) => {
@@ -244,14 +288,12 @@ export const EditorScene = () => {
         )}
         
         {/* 地面 */}
-        <mesh
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[0, 0, 0]}
-          onClick={handleClick}
-        >
-          <planeGeometry args={[100, 100]} />
-          <meshStandardMaterial color="#111111" />
-        </mesh>
+        {activeProject && (
+          <Ground 
+            texture={activeProject.settings.groundTexture} 
+            onClick={handleClick} 
+          />
+        )}
         
         {/* ブロックの描画 */}
         {activeProject?.blocks.map((block) => (
