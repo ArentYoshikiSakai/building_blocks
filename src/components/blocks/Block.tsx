@@ -9,13 +9,17 @@ import { ContextMenu } from '../ui/ContextMenu';
 interface BlockProps {
   block: BlockType;
   onMove?: (id: string, position: Vector3) => void;
+  moveOnly?: boolean;
+  rotateOnly?: boolean;
+  scaleOnly?: boolean;
 }
 
-export const Block = ({ block, onMove }: BlockProps) => {
+export const Block = ({ block, onMove, moveOnly, rotateOnly, scaleOnly }: BlockProps) => {
   const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
+  const [isScaling, setIsScaling] = useState(false);
   const { camera, gl, mouse } = useThree();
   
   // コンテキストメニュー用の状態
@@ -27,36 +31,48 @@ export const Block = ({ block, onMove }: BlockProps) => {
     selectBlock,
     updateBlockPosition,
     updateBlockRotation,
+    updateBlockScale,
     removeBlock,
     setDraggingBlock,
-    setRotatingBlock
+    setRotatingBlock,
+    activeTool
   } = useBlockStore();
   
   const isSelected = selectedBlockId === block.id;
   
-  // ドラッグ/回転用の参照ポイント
+  // ドラッグ/回転/スケール用の参照ポイント
   const dragStartPoint = useRef<{ x: number; y: number } | null>(null);
   const rotationStartPoint = useRef<{ x: number; y: number } | null>(null);
+  const scaleStartPoint = useRef<{ x: number; y: number } | null>(null);
   const dragPlane = useRef(new Plane(new Vector3(0, 1, 0), 0));
   const originalPosition = useRef<Vector3 | null>(null);
   const originalRotation = useRef<Euler | null>(null);
+  const originalScale = useRef<Vector3 | null>(null);
   const isPointerDown = useRef(false);
   
   // 選択状態の場合、ハイライト効果を適用
   useFrame(() => {
     if (meshRef.current) {
       if (isSelected) {
-        meshRef.current.scale.lerp(new Vector3(1.05, 1.05, 1.05), 0.1);
+        meshRef.current.scale.lerp(
+          new Vector3(
+            1.05 * block.scale.x, 
+            1.05 * block.scale.y, 
+            1.05 * block.scale.z
+          ), 
+          0.1
+        );
       } else {
-        meshRef.current.scale.lerp(new Vector3(1, 1, 1), 0.1);
+        meshRef.current.scale.lerp(block.scale, 0.1);
       }
     }
   });
   
-  // ドラッグハンドリング
+  // フレーム毎の処理 (ドラッグ、回転、拡大縮小)
   useFrame(({ camera, mouse }) => {
-    if (!isDragging && !isRotating || !isSelected || !meshRef.current) return;
+    if (!isSelected || !meshRef.current) return;
     
+    // ドラッグ処理
     if (isDragging) {
       // 移動ロジック（従来通り）
       const blockRaycaster = new Raycaster();
@@ -75,6 +91,7 @@ export const Block = ({ block, onMove }: BlockProps) => {
       }
     }
     
+    // 回転処理
     if (isRotating && rotationStartPoint.current && originalRotation.current) {
       // 回転ロジック
       const deltaX = mouse.x - rotationStartPoint.current.x;
@@ -95,6 +112,28 @@ export const Block = ({ block, onMove }: BlockProps) => {
       
       // 回転を適用
       updateBlockRotation(block.id, currentRotation);
+    }
+    
+    // サイズ変更処理
+    if (isScaling && scaleStartPoint.current && originalScale.current) {
+      // スケーリングロジック
+      const deltaY = mouse.y - scaleStartPoint.current.y;
+      
+      // スケールを計算 (上下の移動でスケール変更)
+      const scaleFactor = 1 - deltaY * 2;
+      const newScale = new Vector3(
+        originalScale.current.x * scaleFactor,
+        originalScale.current.y * scaleFactor,
+        originalScale.current.z * scaleFactor
+      );
+      
+      // 最小値と最大値を制限
+      newScale.x = Math.max(0.2, Math.min(newScale.x, 3));
+      newScale.y = Math.max(0.2, Math.min(newScale.y, 3));
+      newScale.z = Math.max(0.2, Math.min(newScale.z, 3));
+      
+      // スケールを適用
+      updateBlockScale(block.id, newScale);
     }
   });
   
@@ -138,13 +177,14 @@ export const Block = ({ block, onMove }: BlockProps) => {
     e.stopPropagation();
     isPointerDown.current = true;
     
+    // 未選択の場合はまず選択
+    if (!isSelected) {
+      selectBlock(block.id);
+      return;
+    }
+    
     // 右クリック（button=2）の場合は回転モードを開始
-    if (e.button === 2) {
-      // ブロックが選択されていない場合は先に選択
-      if (!isSelected) {
-        selectBlock(block.id);
-      }
-      
+    if (e.button === 2 || rotateOnly) {
       // 回転モードを開始
       setIsRotating(true);
       setRotatingBlock(true); // グローバルな回転状態を更新
@@ -161,22 +201,36 @@ export const Block = ({ block, onMove }: BlockProps) => {
       return;
     }
     
-    // 単一のクリックで選択する（左クリックの場合）
-    if (!isSelected) {
-      selectBlock(block.id);
+    // Shiftキーを押しながらドラッグ、またはスケールモードの場合はサイズ変更
+    if ((e.shiftKey && activeTool === 'select') || scaleOnly) {
+      // サイズ変更モードを開始
+      setIsScaling(true);
+      gl.domElement.style.cursor = 'ns-resize';
+      
+      // 元のスケールと開始位置を保存
+      originalScale.current = new Vector3(
+        block.scale.x,
+        block.scale.y,
+        block.scale.z
+      );
+      scaleStartPoint.current = { x: mouse.x, y: mouse.y };
+      
       return;
     }
     
-    // 選択済みなら即ドラッグ開始（左クリックの場合）
-    setIsDragging(true);
-    setDraggingBlock(true); // グローバルなドラッグ状態を更新
-    gl.domElement.style.cursor = 'grabbing';
-    
-    // 元の位置を保存
-    originalPosition.current = block.position.clone();
-    
-    // ドラッグする平面を設定（ブロックのY位置に合わせる）
-    dragPlane.current = new Plane(new Vector3(0, 1, 0), -block.position.y);
+    // アクティブツールに応じた処理
+    if (activeTool === 'select' || activeTool === 'move' || moveOnly) {
+      // ドラッグ開始
+      setIsDragging(true);
+      setDraggingBlock(true); // グローバルなドラッグ状態を更新
+      gl.domElement.style.cursor = 'grabbing';
+      
+      // 元の位置を保存
+      originalPosition.current = block.position.clone();
+      
+      // ドラッグする平面を設定（ブロックのY位置に合わせる）
+      dragPlane.current = new Plane(new Vector3(0, 1, 0), -block.position.y);
+    }
   };
   
   const handlePointerUp = (e: React.PointerEvent) => {
@@ -186,6 +240,12 @@ export const Block = ({ block, onMove }: BlockProps) => {
     if (isRotating) {
       setIsRotating(false);
       setRotatingBlock(false); // グローバルな回転状態を更新
+      gl.domElement.style.cursor = 'auto';
+    }
+    
+    // サイズ変更モードが終了
+    if (isScaling) {
+      setIsScaling(false);
       gl.domElement.style.cursor = 'auto';
     }
     
@@ -202,21 +262,17 @@ export const Block = ({ block, onMove }: BlockProps) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Shiftキーを押しながらクリックで削除
-    if (e.shiftKey) {
+    // 削除ツールが選択されている場合は削除
+    if (activeTool === 'delete') {
       removeBlock(block.id);
       return;
     }
     
-    // クリックでの選択解除は、ダブルクリックで行うようにする
-    // または、明示的に別のブロックや地面をクリックしたときに解除される
-    
-    // 注: 以下のコードをコメントアウトすることで、クリックのみでは選択解除しないようにする
-    /*
-    if (isSelected && !isDragging) {
-      selectBlock(null);
+    // Shiftキーを押しながらクリックで削除
+    if (e.shiftKey && activeTool === 'select') {
+      removeBlock(block.id);
+      return;
     }
-    */
   };
   
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -233,35 +289,10 @@ export const Block = ({ block, onMove }: BlockProps) => {
     // コンテキストメニューは表示しない（右クリック＋ドラッグで直接回転するため）
   };
   
-  // 回転処理
-  const handleRotate = (axis: 'x' | 'y' | 'z', direction: 1 | -1) => {
-    // 現在の回転を取得
-    const currentRotation = new Euler(
-      block.rotation.x,
-      block.rotation.y,
-      block.rotation.z
-    );
-    
-    // 90度（π/2ラジアン）回転
-    const rotationAmount = Math.PI / 2 * direction;
-    
-    // 指定した軸に対して回転
-    if (axis === 'x') {
-      currentRotation.x = MathUtils.euclideanModulo(currentRotation.x + rotationAmount, Math.PI * 2);
-    } else if (axis === 'y') {
-      currentRotation.y = MathUtils.euclideanModulo(currentRotation.y + rotationAmount, Math.PI * 2);
-    } else if (axis === 'z') {
-      currentRotation.z = MathUtils.euclideanModulo(currentRotation.z + rotationAmount, Math.PI * 2);
-    }
-    
-    // 回転を更新
-    updateBlockRotation(block.id, currentRotation);
-  };
-  
   // ドキュメント全体のポインターイベントを処理
   useEffect(() => {
     const handlePointerMove = (e: PointerEvent) => {
-      if (isDragging || isRotating) {
+      if (isDragging || isRotating || isScaling) {
         e.preventDefault();
       }
     };
@@ -279,11 +310,16 @@ export const Block = ({ block, onMove }: BlockProps) => {
         gl.domElement.style.cursor = 'auto';
       }
       
+      if (isScaling) {
+        setIsScaling(false);
+        gl.domElement.style.cursor = 'auto';
+      }
+      
       isPointerDown.current = false;
     };
     
-    // ドラッグや回転中はイベントをグローバルに追加
-    if (isDragging || isRotating) {
+    // イベントをグローバルに追加
+    if (isDragging || isRotating || isScaling) {
       document.addEventListener('pointermove', handlePointerMove);
       document.addEventListener('pointerup', handlePointerUp);
       
@@ -305,7 +341,39 @@ export const Block = ({ block, onMove }: BlockProps) => {
       document.removeEventListener('pointermove', handlePointerMove);
       document.removeEventListener('pointerup', handlePointerUp);
     };
-  }, [isDragging, isRotating, gl, setDraggingBlock, setRotatingBlock]);
+  }, [isDragging, isRotating, isScaling, gl, setDraggingBlock, setRotatingBlock]);
+  
+  // ブロックの色を決定
+  const getBlockColor = () => {
+    if (isRotating) return '#00cc00';  // 回転中は緑色
+    if (isScaling) return '#9c27b0';   // サイズ変更中は紫色
+    if (isDragging) return '#ff0000';  // ドラッグ中は赤色
+    if (hovered) return '#ff9e00';     // ホバー中はオレンジ色
+    if (isSelected) return '#1e88e5';  // 選択中は青色
+    return block.color;                // デフォルトは設定色
+  };
+  
+  // ツールに基づいたカーソルスタイルを取得
+  const getCursorStyle = () => {
+    switch (activeTool) {
+      case 'move': return 'move';
+      case 'rotate': return 'alias';
+      case 'scale': return 'ns-resize';
+      case 'delete': return 'not-allowed';
+      default: return 'pointer';
+    }
+  };
+  
+  // マウスホバー時のカーソル設定
+  const handlePointerOver = () => {
+    setHovered(true);
+    gl.domElement.style.cursor = getCursorStyle();
+  };
+  
+  const handlePointerOut = () => {
+    setHovered(false);
+    gl.domElement.style.cursor = 'auto';
+  };
   
   return (
     <>
@@ -313,17 +381,18 @@ export const Block = ({ block, onMove }: BlockProps) => {
         ref={meshRef}
         position={[block.position.x, block.position.y, block.position.z]}
         rotation={[block.rotation.x, block.rotation.y, block.rotation.z]}
+        scale={[block.scale.x, block.scale.y, block.scale.z]}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
         onDoubleClick={handleDoubleClick}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
-        onPointerOver={() => setHovered(true)}
-        onPointerOut={() => setHovered(false)}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
       >
         {renderBlockMesh()}
         <meshStandardMaterial 
-          color={isRotating ? '#00cc00' : isDragging ? '#ff0000' : hovered ? '#ff9e00' : isSelected ? '#1e88e5' : block.color} 
+          color={getBlockColor()} 
           wireframe={false}
           transparent={block.type === 'window'}
           opacity={block.type === 'window' ? 0.5 : 1}

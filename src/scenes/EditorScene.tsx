@@ -6,6 +6,7 @@ import { useBlockStore } from '../store/useBlockStore';
 import { Vector3, Raycaster, Plane, Vector2 } from 'three';
 import { BlockPalette } from '../components/ui/BlockPalette';
 import { SettingsPanel } from '../components/ui/SettingsPanel';
+import { ToolBar, ToolType } from '../components/ui/ToolBar';
 import { BlockType } from '../types';
 
 // スナップ用のユーティリティ関数
@@ -112,10 +113,14 @@ export const EditorScene = () => {
     activeProject, 
     addBlock, 
     updateBlockPosition,
+    updateBlockRotation,
+    updateBlockScale,
     selectedBlockId,
     selectBlock,
     isDraggingBlock,
-    isRotatingBlock
+    isRotatingBlock,
+    activeTool,
+    setActiveTool
   } = useBlockStore();
   
   const gridRef = useRef(null);
@@ -156,6 +161,57 @@ export const EditorScene = () => {
     }
   };
   
+  // ツール変更ハンドラ
+  const handleToolChange = (tool: ToolType) => {
+    setActiveTool(tool);
+  };
+  
+  // フォーカスされたブロックに対して操作を適用するヘルパー関数
+  const applyOperationToSelectedBlock = (operation: 'move' | 'rotate' | 'scale', value: any) => {
+    if (!selectedBlockId || !activeProject) return;
+    
+    const block = activeProject.blocks.find(b => b.id === selectedBlockId);
+    if (!block) return;
+    
+    switch (operation) {
+      case 'move':
+        updateBlockPosition(selectedBlockId, value);
+        break;
+      case 'rotate':
+        updateBlockRotation(selectedBlockId, value);
+        break;
+      case 'scale':
+        updateBlockScale(selectedBlockId, value);
+        break;
+    }
+  };
+  
+  // ブロック操作のハンドラをツールに応じて設定
+  const getBlockInteractionProps = (block: any) => {
+    // アクティブツールに応じた操作プロパティを返す
+    const props: any = {};
+    
+    switch (activeTool) {
+      case 'select':
+        // 選択モード - デフォルトの選択動作
+        break;
+      case 'move':
+        // 移動モード - 移動コールバックのみ有効
+        props.moveOnly = true;
+        break;
+      case 'rotate':
+        // 回転モード - 回転コールバックのみ有効
+        props.rotateOnly = true;
+        break;
+      case 'scale':
+        // サイズ変更モード - スケールコールバックのみ有効
+        props.scaleOnly = true;
+        break;
+    }
+    
+    return props;
+  };
+  
   return (
     <div style={{ width: '100%', height: '100vh' }}>
       {/* ブロックパレット */}
@@ -163,6 +219,9 @@ export const EditorScene = () => {
       
       {/* 設定パネル */}
       <SettingsPanel />
+      
+      {/* ツールバー */}
+      <ToolBar onToolChange={handleToolChange} />
       
       <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
         <ambientLight intensity={0.5} />
@@ -196,6 +255,7 @@ export const EditorScene = () => {
             key={block.id} 
             block={block} 
             onMove={handleBlockMove}
+            {...getBlockInteractionProps(block)}
           />
         ))}
         
@@ -216,6 +276,7 @@ export const EditorScene = () => {
           <div className="usage-guide">
             <h3>Block World 操作方法</h3>
             <p>👆 パレットからブロックをドラッグして配置</p>
+            <p>🛠️ ツールバーから適切なツールを選択</p>
             <p>🔍 ブロックを選択してドラッグで移動</p>
             <p>🔄 選択したブロックを右クリック+ドラッグして回転</p>
             <p>❌ ブロックをダブルクリックで削除</p>
