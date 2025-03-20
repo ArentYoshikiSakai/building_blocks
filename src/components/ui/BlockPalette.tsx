@@ -9,6 +9,25 @@ interface BlockPaletteProps {
 // ブロックのカテゴリータイプ
 type BlockCategory = '基本' | '装飾' | '特殊';
 
+// カテゴリーカラーマップ
+const categoryColors = {
+  '基本': {
+    bg: '#e3fafc',
+    border: '#15aabf',
+    active: '#c5f6fa'
+  },
+  '装飾': {
+    bg: '#fff3bf',
+    border: '#fab005',
+    active: '#ffec99'
+  },
+  '特殊': {
+    bg: '#f3f0ff',
+    border: '#7950f2',
+    active: '#e5dbff'
+  }
+};
+
 // ブロック情報の型定義
 interface BlockInfo {
   type: BlockType;
@@ -19,94 +38,111 @@ interface BlockInfo {
 
 const PaletteContainer = styled.div`
   position: absolute;
-  top: 10px;
-  left: 10px;
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  top: 20px;
+  left: 20px;
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   z-index: 1000;
   max-height: 80vh;
   overflow-y: auto;
+  border: 3px solid #e0e0e0;
 `;
 
 const PaletteHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 `;
 
 const PaletteTitle = styled.h3`
   margin: 0;
-  font-size: 16px;
+  font-size: 20px;
   color: #333;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 `;
 
 const ToggleButton = styled.button`
   background: none;
   border: none;
-  font-size: 16px;
+  font-size: 20px;
   cursor: pointer;
-  padding: 4px;
-  color: #666;
+  padding: 8px;
+  color: #555;
+  transition: all 0.2s;
+  border-radius: 50%;
   
   &:hover {
     color: #000;
+    background-color: #f0f0f0;
+    transform: scale(1.1);
   }
 `;
 
 const CategoryTabs = styled.div`
   display: flex;
-  border-bottom: 1px solid #e0e0e0;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
+  gap: 8px;
+  justify-content: center;
 `;
 
 interface TabProps {
   isActive: boolean;
+  category: BlockCategory;
 }
 
 const CategoryTab = styled.button<TabProps>`
-  padding: 8px 12px;
-  background: ${props => props.isActive ? '#eaf6ff' : 'transparent'};
-  border: none;
-  border-bottom: 2px solid ${props => props.isActive ? '#1e88e5' : 'transparent'};
-  color: ${props => props.isActive ? '#1e88e5' : '#666'};
+  padding: 10px 18px;
+  background: ${props => props.isActive ? categoryColors[props.category].active : categoryColors[props.category].bg};
+  border: 3px solid ${props => props.isActive ? categoryColors[props.category].border : 'transparent'};
+  border-radius: 12px;
+  color: #333;
   font-weight: ${props => props.isActive ? 'bold' : 'normal'};
+  font-size: 16px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s;
+  box-shadow: ${props => props.isActive ? '0 4px 8px rgba(0, 0, 0, 0.15)' : 'none'};
+  transform: ${props => props.isActive ? 'translateY(-2px)' : 'none'};
   
   &:hover {
-    background-color: ${props => props.isActive ? '#eaf6ff' : '#f5f5f5'};
+    background-color: ${props => categoryColors[props.category].active};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
 `;
 
 const BlocksGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 15px;
+  gap: 12px;
+  margin-bottom: 20px;
 `;
 
 const BlockItem = styled.div`
-  min-width: 70px;
-  height: 70px;
-  border-radius: 6px;
+  min-width: 85px;
+  height: 85px;
+  border-radius: 12px;
   cursor: grab;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   user-select: none;
-  transition: all 0.2s;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  background-color: white;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
     z-index: 1;
+    border-color: rgba(0, 0, 0, 0.2);
   }
 
   &:active {
@@ -116,44 +152,53 @@ const BlockItem = styled.div`
 `;
 
 const BlockIcon = styled.div`
-  font-size: 24px;
-  margin-bottom: 4px;
+  font-size: 32px;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
 `;
 
 const BlockLabel = styled.div`
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
   color: #333;
+  font-weight: bold;
 `;
 
 const ColorPickerSection = styled.div`
-  margin-top: 8px;
+  margin-top: 12px;
+  background-color: #f8f9fa;
+  padding: 12px;
+  border-radius: 12px;
 `;
 
 const ColorPickerTitle = styled.h4`
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  color: #555;
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #333;
+  text-align: center;
+  font-weight: bold;
 `;
 
 const ColorPicker = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
   justify-content: center;
 `;
 
 const ColorDot = styled.div<{ bgColor: string; isSelected: boolean }>`
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background-color: ${props => props.bgColor};
-  border: 2px solid ${props => props.isSelected ? '#000' : 'transparent'};
+  border: 3px solid ${props => props.isSelected ? '#000' : 'transparent'};
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: all 0.3s;
+  box-shadow: ${props => props.isSelected ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)'};
   
   &:hover {
-    transform: scale(1.15);
+    transform: scale(1.2);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -208,14 +253,15 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
     
     // カスタムデータ転送のためのゴースト画像
     const ghostElement = document.createElement('div');
-    ghostElement.style.width = '60px';
-    ghostElement.style.height = '60px';
+    ghostElement.style.width = '70px';
+    ghostElement.style.height = '70px';
     ghostElement.style.backgroundColor = selectedColor;
-    ghostElement.style.borderRadius = '4px';
+    ghostElement.style.borderRadius = '8px';
     ghostElement.style.opacity = '0.8';
+    ghostElement.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
     document.body.appendChild(ghostElement);
     
-    e.dataTransfer.setDragImage(ghostElement, 30, 30);
+    e.dataTransfer.setDragImage(ghostElement, 35, 35);
     
     // コールバックを実行
     onDragStart(type, selectedColor);
@@ -236,8 +282,10 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
 
   if (isPaletteCollapsed) {
     return (
-      <PaletteContainer style={{ width: 'auto', padding: '8px' }}>
-        <ToggleButton onClick={togglePalette} title="パレットを展開">🧩</ToggleButton>
+      <PaletteContainer style={{ width: 'auto', padding: '12px' }}>
+        <ToggleButton onClick={togglePalette} title="パレットを展開">
+          <span style={{ fontSize: '24px' }}>🧩</span>
+        </ToggleButton>
       </PaletteContainer>
     );
   }
@@ -253,9 +301,10 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
       
       <CategoryTabs>
         {availableCategories.map(category => (
-          <CategoryTab
+          <CategoryTab 
             key={category}
-            isActive={category === activeCategory}
+            isActive={activeCategory === category}
+            category={category}
             onClick={() => setActiveCategory(category)}
           >
             {category}
@@ -264,13 +313,12 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
       </CategoryTabs>
       
       <BlocksGrid>
-        {filteredBlocks.map((block) => (
-          <BlockItem
+        {filteredBlocks.map(block => (
+          <BlockItem 
             key={block.type}
-            style={{ backgroundColor: selectedColor }}
             draggable
             onDragStart={(e) => handleDragStart(e, block.type)}
-            title={block.label}
+            style={{ backgroundColor: selectedColor + '20' }} // 薄い背景色
           >
             <BlockIcon>{block.icon}</BlockIcon>
             <BlockLabel>{block.label}</BlockLabel>
@@ -279,15 +327,14 @@ export const BlockPalette = ({ onDragStart }: BlockPaletteProps) => {
       </BlocksGrid>
       
       <ColorPickerSection>
-        <ColorPickerTitle>カラー</ColorPickerTitle>
+        <ColorPickerTitle>ブロックの色</ColorPickerTitle>
         <ColorPicker>
-          {colorPresets.map((color) => (
-            <ColorDot
+          {colorPresets.map(color => (
+            <ColorDot 
               key={color}
               bgColor={color}
-              isSelected={color === selectedColor}
+              isSelected={selectedColor === color}
               onClick={() => setSelectedColor(color)}
-              title={color}
             />
           ))}
         </ColorPicker>

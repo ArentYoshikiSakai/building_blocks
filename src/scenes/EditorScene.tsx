@@ -127,7 +127,7 @@ const DragDropHandler = ({ onPlaceBlock }: { onPlaceBlock: (position: Vector3) =
     return (
       <mesh position={[previewPosition.x, previewPosition.y, previewPosition.z]}>
         <boxGeometry args={[1, 1, 1]} />
-        <meshStandardMaterial color="rgba(100, 149, 237, 0.5)" transparent opacity={0.5} />
+        <meshStandardMaterial color="#64b5f6" transparent opacity={0.5} />
       </mesh>
     );
   }
@@ -257,46 +257,58 @@ export const EditorScene = () => {
     return props;
   };
   
+  // 初期化/エラー状態の確認
+  if (!activeProject) {
+    return <div style={{ padding: '20px' }}>プロジェクトが読み込まれていません...</div>;
+  }
+  
   return (
-    <div style={{ width: '100%', height: '100vh' }}>
-      {/* ブロックパレット */}
+    <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+      {/* UIコンポーネント */}
       <BlockPalette onDragStart={handleBlockDragStart} />
-      
-      {/* 設定パネル */}
       <SettingsPanel />
-      
-      {/* ツールバー */}
       <ToolBar onToolChange={handleToolChange} />
-      
-      {/* ヘルプガイド */}
       <HelpGuide />
       
-      <Canvas camera={{ position: [10, 10, 10], fov: 50 }}>
+      {/* 3Dシーン */}
+      <Canvas 
+        shadows 
+        camera={{ position: [10, 10, 10], fov: 50 }}
+        style={{ background: activeProject.settings.backgroundColor }}
+      >
+        {/* 光源 */}
         <ambientLight intensity={0.5} />
-        <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
+        <directionalLight 
+          position={[10, 10, 5]} 
+          intensity={1} 
+          castShadow 
+        />
         
-        {/* 背景色を設定 */}
-        <color attach="background" args={[activeProject?.settings.backgroundColor || '#87CEEB']} />
+        {/* 色付き背景 */}
+        <color attach="background" args={[activeProject.settings.backgroundColor]} />
         
         {/* グリッド表示 */}
-        {activeProject?.settings.gridEnabled && (
-          <gridHelper 
-            args={[100, 100, "#444444", "#222222"]} 
+        {activeProject.settings.gridEnabled && (
+          <Grid 
+            args={[100, 100]} 
             position={[0, 0, 0]}
-            scale={[activeProject.settings.gridSize, 1, activeProject.settings.gridSize]}
+            cellSize={activeProject.settings.gridSize}
+            cellThickness={0.5}
+            cellColor="#444444"
+            sectionSize={5}
+            sectionThickness={1}
+            sectionColor="#222222"
           />
         )}
         
         {/* 地面 */}
-        {activeProject && (
-          <Ground 
-            texture={activeProject.settings.groundTexture} 
-            onClick={handleClick} 
-          />
-        )}
+        <Ground 
+          texture={activeProject.settings.groundTexture} 
+          onClick={handleClick} 
+        />
         
         {/* ブロックの描画 */}
-        {activeProject?.blocks.map((block) => (
+        {activeProject.blocks.map((block) => (
           <BlockComponent 
             key={block.id} 
             block={block} 
@@ -308,14 +320,18 @@ export const EditorScene = () => {
         {/* ドラッグ&ドロップハンドラ */}
         <DragDropHandler onPlaceBlock={handlePlaceBlock} />
         
-        {/* カメラコントロール - ドラッグ中または回転中は無効化 */}
+        {/* カメラコントロール */}
         <OrbitControls 
           enabled={!isDraggingBlock && !isRotatingBlock} 
           makeDefault 
+          minPolarAngle={0}
+          maxPolarAngle={Math.PI / 2 - 0.1}
+          minDistance={5}
+          maxDistance={50}
         />
         
         {/* 環境光 */}
-        <Environment preset={activeProject?.settings.lightingMode === 'day' ? 'sunset' : 'night'} />
+        <Environment preset={activeProject.settings.lightingMode === 'day' ? 'sunset' : 'night'} />
       </Canvas>
     </div>
   );

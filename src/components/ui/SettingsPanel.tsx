@@ -183,13 +183,20 @@ const RadioOption = styled.label`
   }
 `;
 
-// テクスチャオプション
-const textureOptions = [
-  { id: 'grass', name: '草原', color: '#7cba3f' },
-  { id: 'sand', name: '砂地', color: '#e6d59e' },
-  { id: 'stone', name: '石畳', color: '#a7a7a7' },
-  { id: 'wood', name: '木製', color: '#8b5a2b' },
-];
+// テクスチャに対応する色とラベル
+const textureInfo = {
+  grass: { name: '草原', color: '#7cba3f' },
+  sand: { name: '砂地', color: '#e6d59e' },
+  stone: { name: '石畳', color: '#a7a7a7' },
+  wood: { name: '木製', color: '#8b5a2b' },
+};
+
+// テクスチャオプション - Object.entriesで配列に変換
+const textureOptions = Object.entries(textureInfo).map(([id, info]) => ({
+  id,
+  name: info.name,
+  color: info.color
+}));
 
 // 照明モードオプション
 const lightingOptions = [
